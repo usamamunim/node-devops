@@ -7,11 +7,7 @@ on:
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: my-app
-  
-                                           
-  CONTAINER_NAME: MY_CONTAINER_NAME           
-                                               
-
+                                                 
 permissions:
   contents: read
 
@@ -47,8 +43,8 @@ jobs:
         IMAGE_TAG: ${{ github.sha }}
         BRANCH_TAG: ${{steps.branch-name.outputs.current_branch}}
       run: |
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:BRANCH_TAG-$IMAGE_TAG .
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:BRANCH_TAG-latest
-        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$BRANCH_TAG-$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$BRANCH_TAG-latest
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$BRANCH_TAG-IMAGE_TAG" >> $GITHUB_OUTPUT
 
     
