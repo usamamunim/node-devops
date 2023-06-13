@@ -2,12 +2,12 @@ name: Deploy to Amazon ECS
 
 on:
   push:
-    branches: [ "master" ]
+    branches: ['master']
 
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: my-app
-                                                 
+
 permissions:
   contents: read
 
@@ -18,34 +18,50 @@ jobs:
     environment: production
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
-    - name: Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v1
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
 
-    - name: Get branch name
-      id: branch-name
-      uses: tj-actions/branch-names@v7
-      
-    - name: Build, tag, and push image to Amazon ECR
-      id: build-image
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        IMAGE_TAG: ${{ github.sha }}
-        BRANCH_TAG: ${{steps.branch-name.outputs.current_branch}}
-      run: |
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$BRANCH_TAG-$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:$BRANCH_TAG-latest .
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$BRANCH_TAG-$IMAGE_TAG
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$BRANCH_TAG-latest
-        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$BRANCH_TAG-IMAGE_TAG" >> $GITHUB_OUTPUT
+      - name: Get branch name
+        id: branch-name
+        uses: tj-actions/branch-names@v7
 
-    
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+          BRANCH_TAG: ${{steps.branch-name.outputs.current_branch}}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$BRANCH_TAG-$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:$BRANCH_TAG-latest .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$BRANCH_TAG-$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$BRANCH_TAG-latest
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$BRANCH_TAG-IMAGE_TAG" >> $GITHUB_OUTPUT
+  deploy_ec2:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        env:
+          PRIVATE_KEY: ${{ secrets.AWS_PRIVATE_KEY  }}
+          HOSTNAME: ${{ secrets.HOSTNAME  }}
+          USER_NAME: ${{ secrets.USER_NAME  }}
+        run: |
+          echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
+          cd app/node-devops &&
+          git checkout master &&
+          git pull origin master &&
+          docker-compose -f docker-compose.prod.yml up -d --build
