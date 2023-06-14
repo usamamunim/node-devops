@@ -48,7 +48,7 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$BRANCH_TAG-latest
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$BRANCH_TAG-IMAGE_TAG" >> $GITHUB_OUTPUT
           
-  deploy_ec2:
+  ec2_deployment:
     needs: deploy
     name: Deploy to EC2
     runs-on: ubuntu-latest
